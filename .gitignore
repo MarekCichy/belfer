@@ -1,0 +1,11 @@
+# Zmienne środowiskowe z kluczami API
+.env
+
+# Katalogi i pliki specyficzne dla PyCharma
+.idea/
+*.iml
+
+# Katalogi specyficzne dla Pythona
+__pycache__/
+venv/
+*.pyc
