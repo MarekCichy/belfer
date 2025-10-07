@@ -26,11 +26,11 @@ def get_weather(city: str) -> dict:
         }
 
 
-def get_current_time(city: str) -> dict:
+def retrieve_course(login: str) -> dict:
     """Returns the current time in a specified city.
 
     Args:
-        city (str): The name of the city for which to retrieve the current time.
+        login (str): The name of the city for which to retrieve the current time.
 
     Returns:
         dict: status and result or error msg.
@@ -55,13 +55,15 @@ def get_current_time(city: str) -> dict:
 
 
 root_agent = Agent(
-    name="weather_time_agent",
+    name="greeting_agent",
     model="gemini-2.0-flash",
     description=(
-        "Agent to answer questions about the time and weather in a city."
+        "Agent to greet the student"
     ),
     instruction=(
-        "You are a helpful agent who can answer user questions about the time and weather in Bangkok."
+        """Jesteś cierpliwym recepcjonistą szkoły. Przywitaj ucznia i określ, czy 
+        zaczyna nowy kurs, czy kontynuuje kurs"""
     ),
-    tools=[get_weather, get_current_time],
+    tools=[retrieve_course],
+    sub_agents=[]
 )
