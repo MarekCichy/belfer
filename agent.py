@@ -27,13 +27,14 @@ def get_weather(city: str) -> dict:
 
 
 def retrieve_course(login: str) -> dict:
-    """Returns the current time in a specified city.
+    """Retrieves data about the course and last lesson for a given login.
 
     Args:
-        login (str): The name of the city for which to retrieve the current time.
+        login (str): The login associated with a given course
 
     Returns:
-        dict: status and result or error msg.
+        course: json with course plan
+        last_lesson: last lesson interactions
     """
 
     if city.lower() == "new york":
@@ -61,9 +62,8 @@ root_agent = Agent(
         "Agent to greet the student"
     ),
     instruction=(
-        """Jesteś cierpliwym recepcjonistą szkoły. Przywitaj ucznia i określ, czy 
-        zaczyna nowy kurs, czy kontynuuje kurs"""
+        """Jesteś cierpliwym recepcjonistą szkoły. Przywitaj ucznia i określ, czy zaczyna nowy kurs, czy kontynuuje kurs."""
     ),
     tools=[retrieve_course],
-    sub_agents=[]
+    sub_agents=[course_planner, teacher, tester]
 )
