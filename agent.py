@@ -2,31 +2,8 @@ import datetime
 from zoneinfo import ZoneInfo
 from google.adk.agents import Agent
 
-def get_weather(city: str) -> dict:
-    """Retrieves the current weather report for a specified city.
 
-    Args:
-        city (str): The name of the city for which to retrieve the weather report.
-
-    Returns:
-        dict: status and result or error msg.
-    """
-    if city.lower() == "new york":
-        return {
-            "status": "success",
-            "report": (
-                "The weather in New York is sunny with a temperature of 25 degrees"
-                " Celsius (77 degrees Fahrenheit)."
-            ),
-        }
-    else:
-        return {
-            "status": "error",
-            "error_message": f"Weather information for '{city}' is not available.",
-        }
-
-
-def retrieve_course(login: str) -> dict:
+def retrieve_course(login):
     """Retrieves data about the course and last lesson for a given login.
 
     Args:
@@ -37,23 +14,33 @@ def retrieve_course(login: str) -> dict:
         last_lesson: last lesson interactions
     """
 
-    if city.lower() == "new york":
-        tz_identifier = "America/New_York"
-    else:
-        return {
-            "status": "error",
-            "error_message": (
-                f"Sorry, I don't have timezone information for {city}."
-            ),
-        }
-
-    tz = ZoneInfo(tz_identifier)
-    now = datetime.datetime.now(tz)
-    report = (
-        f'The current time in {city} is {now.strftime("%Y-%m-%d %H:%M:%S %Z%z")}'
-    )
+  
     return {"status": "success", "report": report}
+    
+    
+course_planner = Agent(
+    name="course_planner",
+    model="gemini-2.0-flash",
+    description=(
+        "Agent iteratively planning the course with the student"
+    ),
+    instruction=(
+        """Jesteś projektantem kursu. Zapytaj ucznia o temat kursu, obecny poziom, docelowy poziom, czas trwania kursu i ile czasu może mu poswięcić. Przygotuj plan na podstawie tych infomacji, zapytaj o feedback i iteracyjnie dopracuj go z uczniem."""
+    ),
+   # sub_agents=[course_planner, teacher, tester]
+)
 
+teacher = Agent(
+    name="teacher",
+    model="gemini-2.0-flash",
+    description=(
+        "Agent teaching the course, introducing new concepts"
+    ),
+    instruction=(
+        """Jesteś nauczycielem. Oprzyj się na planie kursu i kontekście ostatniej lekcji i prowadź kurs dalej. Po wyjaśnieniu nowego tematu wywołaj testera, aby sprawdzić wiedzę."""
+    ),
+   sub_agents=[tester]
+)
 
 root_agent = Agent(
     name="greeting_agent",
