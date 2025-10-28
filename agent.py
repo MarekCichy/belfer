@@ -1,22 +1,7 @@
 import datetime
 from zoneinfo import ZoneInfo
 from google.adk.agents import Agent
-
-
-def retrieve_course(login):
-    """Retrieves data about the course and last lesson for a given login.
-
-    Args:
-        login (str): The login associated with a given course
-
-    Returns:
-        course: json with course plan
-        last_lesson: last lesson interactions
-    """
-
-  
-    return {"status": "success", "report": report}
-    
+from bigquery_context import fetch_predefined_info
     
 course_planner = Agent(
     name="course_planner",
@@ -51,6 +36,6 @@ root_agent = Agent(
     instruction=(
         """Jesteś cierpliwym recepcjonistą szkoły. Przywitaj ucznia i określ, czy zaczyna nowy kurs, czy kontynuuje kurs."""
     ),
-    tools=[retrieve_course],
-    sub_agents=[course_planner, teacher, tester]
+    sub_agents=[course_planner, teacher, tester],
+    before_agent_callbacks =  [fetch_predefined_info] 
 )
