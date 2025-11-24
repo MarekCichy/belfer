@@ -1,6 +1,74 @@
+from google.adk import Agent, AgentContext, AgentResponse
+from exam_agent_memory import ExamAgentMemory  # Upewnij się, że import jest poprawny
+import json
 
-from google.adk.agents import Agent
-# from bigquery_context import *
+# Ustawienie domyślnego ID dla celów testowych
+DEFAULT_STUDENT_ID = "student_janka_c"
+
+
+# --- A. FUNKCJA WCZYTYWANIA PAMIĘCI (BEFORE CALLBACK) ---
+def load_and_inject_memory(context: AgentContext):
+    """
+    Wczytuje pamięć studenta i wstrzykuje kontekst do instrukcji systemowej Agenta Głównego.
+
+    W ADK kontekst 'context.session_id' lub inne metadane mogą posłużyć jako ID studenta.
+    Na razie używamy stałego DEFAULT_STUDENT_ID.
+    """
+
+    # 1. Określenie ID studenta (np. na podstawie sesji lub metadanych)
+    # W rzeczywistej aplikacji użyłbyś kontekstu (np. context.session_id)
+    student_id = DEFAULT_STUDENT_ID
+
+    # 2. Inicjalizacja i wczytanie pamięci
+    memory_manager = ExamAgentMemory(student_id=student_id)
+    student_context = memory_manager.get_context_for_agent()
+
+    # 3. Wstrzyknięcie pamięci do instrukcji systemowej Agenta
+    # Pamiętaj, że instrukcja Agenta Głównego musi być gotowa na przyjęcie kontekstu.
+
+    # Zapisujemy pamięć w metadanych dla późniejszego użycia w after_agent_callbacks
+    context.metadata['memory_manager'] = memory_manager
+
+    print(f"\n[DEBUG: CALLBACK INJECT] Wstrzykiwany kontekst:\n{student_context}")
+
+    # Zwracamy kontekst do wstrzyknięcia do instrukcji systemowej
+    return f"""
+    --- PAMIĘĆ DŁUGOTERMINOWA DLA UCZNIA: {student_id} ---
+    {student_context}
+    -----------------------------------------------------
+    """
+
+
+# --- B. FUNKCJA ZAPISYWANIA PAMIĘCI (AFTER CALLBACK) ---
+def summarize_and_save_memory(context: AgentContext, response: AgentResponse):
+    """
+    Analizuje odpowiedź Agenta, generuje podsumowanie i zapisuje do pamięci.
+    """
+
+    # 1. Odzyskanie Managera Pamięci z metadanych
+    if 'memory_manager' not in context.metadata:
+        print("Błąd: Memory Manager nie znaleziony w kontekście.")
+        return response
+
+    memory_manager: ExamAgentMemory = context.metadata['memory_manager']
+
+    # 2. Analiza i podsumowanie (tutaj musi być logika LLM!)
+    # W idealnym świecie, użyłbyś modelu do analizy 'response.history' i wygenerowania nowego JSON-a
+
+    # PRZYKŁADOWA LOGIKA (Symulacja):
+    # Prosimy model o podsumowanie i generujemy dane do zapisu:
+    if "matematyka" in response.text.lower() and "wzory" in response.text.lower():
+        # Aktualizacja słabych punktów, jeśli model stwierdził problem
+        memory_manager.update_weaknesses("mathematics", "Problem with formula application")
+
+    # Aktualizacja ostatniej sesji
+    memory_manager.data['last_session_summary'] = f"Sesja zakończona. Ostatnia odpowiedź: {response.text[:50]}..."
+
+    # Zapis do pliku
+    memory_manager.save_memory()
+    print("Pamięć została pomyślnie zaktualizowana i zapisana.")
+
+    return response  # Zwracamy oryginalną odpowiedź
 
 maths_teacher = Agent(
     name="maths_teacher",
@@ -62,7 +130,8 @@ root_agent = Agent(
         PAMIĘĆ I KONTEKST:
         - Korzystaj z historii rozmowy. Jeśli uczeń wraca do tematu, który sprawiał trudność, przypomnij o tym delikatnie ("Pamiętam, że ostatnio walczyliśmy z ułamkami, sprawdzimy to?")."""
     ),
-    sub_agents=[maths_teacher, polish_teacher, language_teacher]
-    # ,before_agent_callbacks =  [fetch_predefined_info]
+    sub_agents=[maths_teacher, polish_teacher, language_teacher],
+    before_agent_callbacks=[load_and_inject_memory],
+    after_agent_callbacks=[summarize_and_save_memory]
 )
 
