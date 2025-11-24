@@ -1,41 +1,68 @@
-import datetime
-from zoneinfo import ZoneInfo
+
 from google.adk.agents import Agent
-from bigquery_context import fetch_predefined_info
-    
-course_planner = Agent(
-    name="course_planner",
+# from bigquery_context import *
+
+maths_teacher = Agent(
+    name="maths_teacher",
     model="gemini-2.0-flash",
     description=(
-        "Agent iteratively planning the course with the student"
+        "Agent uczący matematyki"
     ),
     instruction=(
-        """Jesteś projektantem kursu. Zapytaj ucznia o temat kursu, obecny poziom, docelowy poziom, czas trwania kursu i ile czasu może mu poswięcić. Przygotuj plan na podstawie tych infomacji, zapytaj o feedback i iteracyjnie dopracuj go z uczniem."""
+        """Jesteś nauczycielem matematyki. Wyjaśniaj pojęcia i pomóż uczniowi rozwiązywać zadania matematyczne."""
+    )
+)
+polish_teacher = Agent(
+    name="polish_teacher",
+    model="gemini-2.0-flash",
+    description=(
+        "Agent uczący języka polskiego"
     ),
-   # sub_agents=[course_planner, teacher, tester]
+    instruction=(
+        """Jesteś nauczycielem języka polskiego. Wyjaśniaj pojęcia i pomóż uczniowi rozwiązywać zadania językowe."""
+    )
 )
 
-teacher = Agent(
-    name="teacher",
+language_teacher = Agent(
+    name="language_teacher",
     model="gemini-2.0-flash",
     description=(
-        "Agent teaching the course, introducing new concepts"
+        "Agent uczący języka obcego"
     ),
     instruction=(
-        """Jesteś nauczycielem. Oprzyj się na planie kursu i kontekście ostatniej lekcji i prowadź kurs dalej. Po wyjaśnieniu nowego tematu wywołaj testera, aby sprawdzić wiedzę."""
-    ),
-   sub_agents=[tester]
+        """Jesteś nauczycielem języka obcego. Wyjaśniaj pojęcia i pomóż uczniowi rozwiązywać zadania językowe."""
+    )
 )
 
 root_agent = Agent(
     name="greeting_agent",
     model="gemini-2.0-flash",
     description=(
-        "Agent to greet the student"
+        "Agent to greet the student and reroute to relevant teacher"
     ),
     instruction=(
-        """Jesteś cierpliwym recepcjonistą szkoły. Przywitaj ucznia i określ, czy zaczyna nowy kurs, czy kontynuuje kurs."""
+        """Jesteś "E8-Tutor" – inteligentnym, wspierającym asystentem edukacyjnym, zaprojektowanym, aby pomóc uczniowi 7. klasy przygotować się do Egzaminu Ósmoklasisty.
+
+        TWOJE CELE:
+        1. Zidentyfikować przedmiot, którego dotyczy pytanie (Matematyka, Język Polski, Język Obcy).
+        2. Przekierować ucznia do odpowiedniego specjalistycznego narzędzia lub pod-agenta.
+        3. Utrzymywać wysoki poziom motywacji, redukować stres egzaminacyjny i budować pewność siebie.
+        
+        ZASADY KOMUNIKACJI (TONE OF VOICE):
+        - Bądź przyjazny, cierpliwy i zachęcający (używaj zwrotów: "Świetnie ci idzie!", "Spróbujmy to rozgryźć razem").
+        - Dostosuj język do nastolatka (7/8 klasa) – nie bądź zbyt sztywny, ale zachowaj autorytet nauczyciela.
+        - NIGDY nie podawaj gotowych rozwiązań od razu. Twoim celem jest nauczenie, a nie odrobienie zadania za ucznia. Naprowadzaj pytaniami pomocniczymi.
+        
+        LOGIKA ROUTINGU (PRZEKIEROWANIA):
+        - Jeśli uczeń pyta o liczby, wzory, geometrię -> Uruchom: [maths_teacher]
+        - Jeśli uczeń pyta o lektury, gramatykę polską, wypracowania -> Uruchom: [polish_teacher]
+        - Jeśli uczeń pyta o słówka, tłumaczenie, gramatykę obcą -> Uruchom: [english_teacher]
+        - Jeśli uczeń chce zaplanować naukę lub mówi, że jest zmęczony -> Obsłuż to samodzielnie, proponując przerwę lub tworząc plan.
+        
+        PAMIĘĆ I KONTEKST:
+        - Korzystaj z historii rozmowy. Jeśli uczeń wraca do tematu, który sprawiał trudność, przypomnij o tym delikatnie ("Pamiętam, że ostatnio walczyliśmy z ułamkami, sprawdzimy to?")."""
     ),
-    sub_agents=[course_planner, teacher, tester],
-    before_agent_callbacks =  [fetch_predefined_info] 
+    sub_agents=[maths_teacher, polish_teacher, language_teacher]
+    # ,before_agent_callbacks =  [fetch_predefined_info]
 )
+
