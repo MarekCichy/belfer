@@ -1,5 +1,14 @@
-from google.adk import Agent, AgentContext, AgentResponse
-from exam_agent_memory import ExamAgentMemory  # Upewnij się, że import jest poprawny
+import sys
+import os
+
+# Dodaje katalog, w którym uruchomiono skrypt, do ścieżki systemowej.
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.append(current_dir)
+
+from google.adk.agents import Agent
+from google.adk.agents.callback_context import CallbackContext
+from exam_agent_memory import ExamAgentMemory
 import json
 
 # Ustawienie domyślnego ID dla celów testowych
@@ -7,68 +16,69 @@ DEFAULT_STUDENT_ID = "student_janka_c"
 
 
 # --- A. FUNKCJA WCZYTYWANIA PAMIĘCI (BEFORE CALLBACK) ---
-def load_and_inject_memory(context: AgentContext):
+# Używamy *args i **kwargs dla elastyczności, rozwiązując błąd 'missing 1 required positional argument'
+def load_and_inject_memory(*args, **kwargs):
     """
-    Wczytuje pamięć studenta i wstrzykuje kontekst do instrukcji systemowej Agenta Głównego.
-
-    W ADK kontekst 'context.session_id' lub inne metadane mogą posłużyć jako ID studenta.
-    Na razie używamy stałego DEFAULT_STUDENT_ID.
+    Wczytuje pamięć studenta i WSTRZYKUJE JĄ BEZPOŚREDNIO do instrukcji Agenta.
     """
 
-    # 1. Określenie ID studenta (np. na podstawie sesji lub metadanych)
-    # W rzeczywistej aplikacji użyłbyś kontekstu (np. context.session_id)
+    # Bezpieczne pobranie obiektu kontekstu
+    context = args[0] if args else kwargs.get('context')
+    if not context:
+        print("[System Error] Brak obiektu 'context' w wywołaniu callback load_and_inject_memory.")
+        return None
+
     student_id = DEFAULT_STUDENT_ID
-
-    # 2. Inicjalizacja i wczytanie pamięci
     memory_manager = ExamAgentMemory(student_id=student_id)
     student_context = memory_manager.get_context_for_agent()
 
-    # 3. Wstrzyknięcie pamięci do instrukcji systemowej Agenta
-    # Pamiętaj, że instrukcja Agenta Głównego musi być gotowa na przyjęcie kontekstu.
+    # Zapisujemy managera i treść pamięci do stanu sesji (dla after_callback)
+    context.state['memory_manager'] = memory_manager
+    context.state['memory_content'] = student_context  # Nadal przechowujemy to w stanie na wszelki wypadek
 
-    # Zapisujemy pamięć w metadanych dla późniejszego użycia w after_agent_callbacks
-    context.metadata['memory_manager'] = memory_manager
+    # KLUCZOWA ZMIANA: BEZPOŚREDNIE WSTRZYKNIĘCIE PAMIĘCI DO INSTRUKCJI
+    original_instruction = context.instruction  # Pobierz bieżącą instrukcję
 
-    print(f"\n[DEBUG: CALLBACK INJECT] Wstrzykiwany kontekst:\n{student_context}")
+    # Wstawiamy wczytany kontekst w placeholder, rozwiązując błąd braku zmiennej
+    updated_instruction = original_instruction.replace(
+        "[[CONTEXT_PLACEHOLDER]]",
+        student_context
+    )
 
-    # Zwracamy kontekst do wstrzyknięcia do instrukcji systemowej
-    return f"""
-    --- PAMIĘĆ DŁUGOTERMINOWA DLA UCZNIA: {student_id} ---
-    {student_context}
-    -----------------------------------------------------
-    """
+    # Nadpisujemy instrukcję Agenta w kontekście
+    context.instruction = updated_instruction
+
+    print(f"[System] Pamięć dla {student_id} wczytana i wstrzyknięta do instrukcji.")
+    return None
 
 
 # --- B. FUNKCJA ZAPISYWANIA PAMIĘCI (AFTER CALLBACK) ---
-def summarize_and_save_memory(context: AgentContext, response: AgentResponse):
+# Używamy *args i **kwargs dla elastyczności
+def summarize_and_save_memory(*args, **kwargs):
     """
-    Analizuje odpowiedź Agenta, generuje podsumowanie i zapisuje do pamięci.
+    Uruchamia się PO wykonaniu agenta.
     """
+    if args:
+        context = args[0]
+    else:
+        context = kwargs.get('context')
+        if not context:
+            return None
 
-    # 1. Odzyskanie Managera Pamięci z metadanych
-    if 'memory_manager' not in context.metadata:
-        print("Błąd: Memory Manager nie znaleziony w kontekście.")
-        return response
+    memory_manager = context.state.get('memory_manager')
 
-    memory_manager: ExamAgentMemory = context.metadata['memory_manager']
+    if memory_manager:
+        agent_response = context.final_output
 
-    # 2. Analiza i podsumowanie (tutaj musi być logika LLM!)
-    # W idealnym świecie, użyłbyś modelu do analizy 'response.history' i wygenerowania nowego JSON-a
+        # Symulacja zapisu:
+        last_msg = str(agent_response)
+        memory_manager.data['last_session_summary'] = f"Ostatnia odp: {last_msg[:50]}..."
+        memory_manager.save_memory()
 
-    # PRZYKŁADOWA LOGIKA (Symulacja):
-    # Prosimy model o podsumowanie i generujemy dane do zapisu:
-    if "matematyka" in response.text.lower() and "wzory" in response.text.lower():
-        # Aktualizacja słabych punktów, jeśli model stwierdził problem
-        memory_manager.update_weaknesses("mathematics", "Problem with formula application")
+        print("[System] Pamięć zaktualizowana i zapisana.")
 
-    # Aktualizacja ostatniej sesji
-    memory_manager.data['last_session_summary'] = f"Sesja zakończona. Ostatnia odpowiedź: {response.text[:50]}..."
+    return None
 
-    # Zapis do pliku
-    memory_manager.save_memory()
-    print("Pamięć została pomyślnie zaktualizowana i zapisana.")
-
-    return response  # Zwracamy oryginalną odpowiedź
 
 maths_teacher = Agent(
     name="maths_teacher",
@@ -77,7 +87,8 @@ maths_teacher = Agent(
         "Agent uczący matematyki"
     ),
     instruction=(
-        """Jesteś nauczycielem matematyki. Wyjaśniaj pojęcia i pomóż uczniowi rozwiązywać zadania matematyczne."""
+        """Jesteś nauczycielem matematyki. Wyjaśniaj pojęcia i pomóż uczniowi rozwiązywać zadania matematyczne.
+        Używaj LaTeX do wzorów."""
     )
 )
 polish_teacher = Agent(
@@ -110,28 +121,29 @@ root_agent = Agent(
     ),
     instruction=(
         """Jesteś "E8-Tutor" – inteligentnym, wspierającym asystentem edukacyjnym, zaprojektowanym, aby pomóc uczniowi 7. klasy przygotować się do Egzaminu Ósmoklasisty.
+        --- PAMIĘĆ O UCZNIU --- 
+        [[CONTEXT_PLACEHOLDER]] 
 
         TWOJE CELE:
         1. Zidentyfikować przedmiot, którego dotyczy pytanie (Matematyka, Język Polski, Język Obcy).
         2. Przekierować ucznia do odpowiedniego specjalistycznego narzędzia lub pod-agenta.
         3. Utrzymywać wysoki poziom motywacji, redukować stres egzaminacyjny i budować pewność siebie.
-        
+
         ZASADY KOMUNIKACJI (TONE OF VOICE):
         - Bądź przyjazny, cierpliwy i zachęcający (używaj zwrotów: "Świetnie ci idzie!", "Spróbujmy to rozgryźć razem").
         - Dostosuj język do nastolatka (7/8 klasa) – nie bądź zbyt sztywny, ale zachowaj autorytet nauczyciela.
         - NIGDY nie podawaj gotowych rozwiązań od razu. Twoim celem jest nauczenie, a nie odrobienie zadania za ucznia. Naprowadzaj pytaniami pomocniczymi.
-        
+
         LOGIKA ROUTINGU (PRZEKIEROWANIA):
         - Jeśli uczeń pyta o liczby, wzory, geometrię -> Uruchom: [maths_teacher]
         - Jeśli uczeń pyta o lektury, gramatykę polską, wypracowania -> Uruchom: [polish_teacher]
-        - Jeśli uczeń pyta o słówka, tłumaczenie, gramatykę obcą -> Uruchom: [english_teacher]
+        - Jeśli uczeń pyta o słówka, tłumaczenie, gramatykę obcą -> Uruchom: [language_teacher]
         - Jeśli uczeń chce zaplanować naukę lub mówi, że jest zmęczony -> Obsłuż to samodzielnie, proponując przerwę lub tworząc plan.
-        
+
         PAMIĘĆ I KONTEKST:
         - Korzystaj z historii rozmowy. Jeśli uczeń wraca do tematu, który sprawiał trudność, przypomnij o tym delikatnie ("Pamiętam, że ostatnio walczyliśmy z ułamkami, sprawdzimy to?")."""
     ),
     sub_agents=[maths_teacher, polish_teacher, language_teacher],
-    before_agent_callbacks=[load_and_inject_memory],
-    after_agent_callbacks=[summarize_and_save_memory]
+    before_agent_callback=[load_and_inject_memory],
+    after_agent_callback=[summarize_and_save_memory]
 )
-

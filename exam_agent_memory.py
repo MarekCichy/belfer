@@ -9,9 +9,12 @@ class ExamAgentMemory:
     Stores and retrieves student progress and key learning points across sessions.
     """
 
+
     def __init__(self, student_id: str, file_prefix: str = "agent_memory_"):
         self.student_id = student_id
         self.memory_file_path = f"{file_prefix}{student_id}.json"
+        # DODAĆ LUB UPEWNIĆ SIĘ, ŻE JEST:
+        self.data = self._load_memory()
 
     def _load_memory(self) -> Dict[str, Any]:
         """Loads memory from the file or initializes a new structure."""
