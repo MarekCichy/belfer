@@ -17,13 +17,15 @@ DEFAULT_STUDENT_ID = "student_janka_c"
 
 # --- A. FUNKCJA WCZYTYWANIA PAMIĘCI (BEFORE CALLBACK) ---
 # Używamy *args i **kwargs dla elastyczności, rozwiązując błąd 'missing 1 required positional argument'
-def load_and_inject_memory(*args, **kwargs):
+def load_and_inject_memory(callback_context):
     """
     Wczytuje pamięć studenta i WSTRZYKUJE JĄ BEZPOŚREDNIO do instrukcji Agenta.
     """
+    # print(dir(callback_context))
+    # print(vars(callback_context))
 
     # Bezpieczne pobranie obiektu kontekstu
-    context = args[0] if args else kwargs.get('context')
+    context = callback_context
     if not context:
         print("[System Error] Brak obiektu 'context' w wywołaniu callback load_and_inject_memory.")
         return None
@@ -37,7 +39,7 @@ def load_and_inject_memory(*args, **kwargs):
     context.state['memory_content'] = student_context  # Nadal przechowujemy to w stanie na wszelki wypadek
 
     # KLUCZOWA ZMIANA: BEZPOŚREDNIE WSTRZYKNIĘCIE PAMIĘCI DO INSTRUKCJI
-    original_instruction = context.instruction  # Pobierz bieżącą instrukcję
+    original_instruction = context._invocation_context.agent.instruction  # Pobierz bieżącą instrukcję
 
     # Wstawiamy wczytany kontekst w placeholder, rozwiązując błąd braku zmiennej
     updated_instruction = original_instruction.replace(
@@ -46,10 +48,13 @@ def load_and_inject_memory(*args, **kwargs):
     )
 
     # Nadpisujemy instrukcję Agenta w kontekście
-    context.instruction = updated_instruction
+    context._invocation_context.agent.instruction = updated_instruction
 
     print(f"[System] Pamięć dla {student_id} wczytana i wstrzyknięta do instrukcji.")
     return None
+
+# def load_and_inject_memory(callback_context):
+#     print('before_callback_succesful', callback_context)
 
 
 # --- B. FUNKCJA ZAPISYWANIA PAMIĘCI (AFTER CALLBACK) ---
