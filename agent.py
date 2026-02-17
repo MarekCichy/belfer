@@ -58,17 +58,11 @@ def load_and_inject_memory(callback_context):
 
 
 # --- B. FUNKCJA ZAPISYWANIA PAMIĘCI (AFTER CALLBACK) ---
-# Używamy *args i **kwargs dla elastyczności
-def summarize_and_save_memory(*args, **kwargs):
+def summarize_and_save_memory(callback_context):
     """
     Uruchamia się PO wykonaniu agenta.
     """
-    if args:
-        context = args[0]
-    else:
-        context = kwargs.get('context')
-        if not context:
-            return None
+    context = callback_context
 
     memory_manager = context.state.get('memory_manager')
 
