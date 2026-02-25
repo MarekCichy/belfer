@@ -16,18 +16,9 @@ DEFAULT_STUDENT_ID = "student_janka_c"
 
 
 # --- A. FUNKCJA WCZYTYWANIA PAMIĘCI (BEFORE CALLBACK) ---
-# Używamy *args i **kwargs dla elastyczności, rozwiązując błąd 'missing 1 required positional argument'
 def load_and_inject_memory(callback_context):
-    """
-    Wczytuje pamięć studenta i WSTRZYKUJE JĄ BEZPOŚREDNIO do instrukcji Agenta.
-    """
-    # print(dir(callback_context))
-    # print(vars(callback_context))
-
-    # Bezpieczne pobranie obiektu kontekstu
     context = callback_context
     if not context:
-        print("[System Error] Brak obiektu 'context' w wywołaniu callback load_and_inject_memory.")
         return None
 
     student_id = DEFAULT_STUDENT_ID
@@ -35,41 +26,32 @@ def load_and_inject_memory(callback_context):
     student_context = memory_manager.get_context_for_agent()
 
     # Zapisujemy managera i treść pamięci do stanu sesji (dla after_callback)
-    context.state['memory_manager'] = memory_manager
+    # context.state['memory_manager'] = memory_manager
     context.state['memory_content'] = student_context  # Nadal przechowujemy to w stanie na wszelki wypadek
 
-    # KLUCZOWA ZMIANA: BEZPOŚREDNIE WSTRZYKNIĘCIE PAMIĘCI DO INSTRUKCJI
-    original_instruction = context._invocation_context.agent.instruction  # Pobierz bieżącą instrukcję
-
-    # Wstawiamy wczytany kontekst w placeholder, rozwiązując błąd braku zmiennej
+    # Wstrzykiwanie instrukcji
+    original_instruction = context._invocation_context.agent.instruction
     updated_instruction = original_instruction.replace(
         "[[CONTEXT_PLACEHOLDER]]",
         student_context
     )
-
-    # Nadpisujemy instrukcję Agenta w kontekście
     context._invocation_context.agent.instruction = updated_instruction
 
-    print(f"[System] Pamięć dla {student_id} wczytana i wstrzyknięta do instrukcji.")
+    print(f"[System] Pamięć dla {student_id} wstrzyknięta.")
     return None
-
-# def load_and_inject_memory(callback_context):
-#     print('before_callback_succesful', callback_context)
 
 
 # --- B. FUNKCJA ZAPISYWANIA PAMIĘCI (AFTER CALLBACK) ---
 def summarize_and_save_memory(callback_context):
-    """
-    Uruchamia się PO wykonaniu agenta.
-    """
     context = callback_context
 
-    memory_manager = context.state.get('memory_manager')
+    # POPRAWKA: Odtwarzamy managera na podstawie zapisanego ID
+    student_id = context.state.get('student_id')
 
-    if memory_manager:
+    if student_id:
+        memory_manager = ExamAgentMemory(student_id=student_id)
         agent_response = context.final_output
 
-        # Symulacja zapisu:
         last_msg = str(agent_response)
         memory_manager.data['last_session_summary'] = f"Ostatnia odp: {last_msg[:50]}..."
         memory_manager.save_memory()
@@ -144,5 +126,5 @@ root_agent = Agent(
     ),
     sub_agents=[maths_teacher, polish_teacher, language_teacher],
     before_agent_callback=[load_and_inject_memory],
-    after_agent_callback=[summarize_and_save_memory]
+    # after_agent_callback=[summarize_and_save_memory]
 )

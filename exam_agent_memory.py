@@ -81,18 +81,18 @@ class ExamAgentMemory:
             print(f"Error: Subject '{subject}' not found in memory structure.")
 
 
-# Przykład użycia (Example of usage):
-if __name__ == "__main__":
-    memory = ExamAgentMemory()
-
-    # Symulacja aktualizacji po sesji (Simulation of post-session update)
-    memory.data[
-        'last_session_summary'] = "The student practiced quadratic equations and had difficulty with sign changes."
-    memory.update_weaknesses("mathematics", "Quadratic equations (sign errors)")
-    memory.update_weaknesses("polish_language", "Argument structure in essay writing")
-    memory.save_memory()
-
-    # Pobranie kontekstu dla nowej sesji (Retrieving context for a new session)
-    context_string = memory.get_context_for_agent()
-    print("\n--- Context String for Agent's Prompt ---")
-    print(context_string)
+# # Przykład użycia (Example of usage):
+# if __name__ == "__main__":
+#     memory = ExamAgentMemory()
+#
+#     # Symulacja aktualizacji po sesji (Simulation of post-session update)
+#     memory.data[
+#         'last_session_summary'] = "The student practiced quadratic equations and had difficulty with sign changes."
+#     memory.update_weaknesses("mathematics", "Quadratic equations (sign errors)")
+#     memory.update_weaknesses("polish_language", "Argument structure in essay writing")
+#     memory.save_memory()
+#
+#     # Pobranie kontekstu dla nowej sesji (Retrieving context for a new session)
+#     context_string = memory.get_context_for_agent()
+#     print("\n--- Context String for Agent's Prompt ---")
+#     print(context_string)
