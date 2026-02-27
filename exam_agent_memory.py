@@ -9,23 +9,27 @@ class ExamAgentMemory:
     Stores and retrieves student progress and key learning points across sessions.
     """
 
-
     def __init__(self, student_id: str, file_prefix: str = "agent_memory_"):
         self.student_id = student_id
-        self.memory_file_path = f"{file_prefix}{student_id}.json"
-        # DODAĆ LUB UPEWNIĆ SIĘ, ŻE JEST:
+        # os.path.join bezpiecznie łączy foldery i pliki
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.memory_file_path = os.path.join(base_dir, f"{file_prefix}{student_id}.json")
+
         self.data = self._load_memory()
 
     def _load_memory(self) -> Dict[str, Any]:
         """Loads memory from the file or initializes a new structure."""
         if os.path.exists(self.memory_file_path):
             try:
+                # Dodaj encoding='utf-8-sig' jeśli plik był edytowany w Notatniku Windows
                 with open(self.memory_file_path, 'r', encoding='utf-8') as f:
+                    print(f"[System] Wczytano pamięć: {self.memory_file_path}")
                     return json.load(f)
             except json.JSONDecodeError:
-                print(f"Warning: Could not decode JSON from {self.memory_file_path}. Starting fresh.")
+                print(f"Warning: Błąd formatu JSON w {self.memory_file_path}.")
                 return self._initialize_data_structure()
         else:
+            print(f"Warning: Brak pliku pamięci w {self.memory_file_path}. Tworzę nowy.")
             return self._initialize_data_structure()
 
     def _initialize_data_structure(self) -> Dict[str, Any]:

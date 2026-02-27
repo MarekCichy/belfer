@@ -25,6 +25,10 @@ def load_and_inject_memory(callback_context):
     memory_manager = ExamAgentMemory(student_id=student_id)
     student_context = memory_manager.get_context_for_agent()
 
+    print("student_id:", memory_manager.student_id)
+    print("file_prefix:", memory_manager.memory_file_path)
+    print("data:", memory_manager.data)
+
     # Zapisujemy managera i treść pamięci do stanu sesji (dla after_callback)
     # context.state['memory_manager'] = memory_manager
     context.state['memory_content'] = student_context  # Nadal przechowujemy to w stanie na wszelki wypadek
